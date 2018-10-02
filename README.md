@@ -24,8 +24,8 @@ pydeinstaller list /path/to/somescript.exe
 # Having reviewed that list, we know what we want is named 'somescript'
 pydeinstaller extract -Fpy /path/to/somescript.exe somescript somescript.py
 
-# ...it also contained a somelib.pyc, and perhaps we want that too, but don't need it decompiled.
-pydeinstaller extract -Fpyc /path/to/somescript.exe somelib.pyc somelib.pyc
+# ...it also contained a PYZ-00.pyz//somelib, and perhaps we want that too, but don't need it decompiled.
+pydeinstaller extract -Fpyc /path/to/somescript.exe PYZ-00.pyz//somelib somelib.pyc
 ```
 ---
 
@@ -34,8 +34,9 @@ Any Future Plans?
 
 Maybe. Sorta. Kinda. If anyone cares. :)
 
+- Support for scanning for .pyc files to autodetect bytecode version is likely.
 - An `extract-all` is likely to happen, probably with support for filtering out uninteresting content.
-- Right now, only CArchive support is present. PyInstaller also generates `ZlibArchive`s, but mostly uses them to bundle standard Python runtime bits, so they're not as interesting.
+- A test suite is a thing that needs to happen to enable safe future extensions.
 
 ---
 

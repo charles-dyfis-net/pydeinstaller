@@ -9,16 +9,95 @@ Don't assume a specific interpreter release; use xdis to parse whatever we find,
 '''
 
 import argparse
+import collections
 import sys
 import tempfile
 from cStringIO import StringIO
+from pprint import pprint
 
-from PyInstaller.archive.readers import CArchiveReader, NotAnArchiveError
-import PyInstaller.utils.cliutils.archive_viewer as archive_viewer
+from PyInstaller.utils.cliutils.archive_viewer import ZlibArchive
+import PyInstaller.archive.readers as pyi_readers
+import PyInstaller.utils.cliutils.archive_viewer as pyi_archive_viewer
+import PyInstaller.building.api as pyi_build_api
 import xdis.unmarshal
 import xdis.magics
 import xdis.std
 from uncompyle6.main import decompile
+
+TocTuple = collections.namedtuple('TocTuple', ['name', 'pos', 'length', 'uncompressed_len', 'iscompressed', 'item_type'])
+
+def reverse_dict(d):
+    result = { }
+    for k, v in d.iteritems():
+        result[v] = k
+    return result
+
+ITEM_TYPES = reverse_dict(pyi_build_api.PKG.xformdict)
+
+class ArchiveReader(object):
+
+    def __init__(self, *args, **kwargs):
+        self.__tempfiles = {}
+        self.__nested_archives = {}
+
+    @staticmethod
+    def open_archive(filename):
+        if filename.lower().endswith('.pyz'):
+            retval = ZlibArchiveReader(filename)
+        else:
+            retval = CArchiveReader(filename)
+        ArchiveReader.__init__(retval)
+        return retval
+
+    def get_nested_archive(self, name):
+        if name in self.__nested_archives:
+            return self.__nested_archives[name]
+        archive_data = self.get_data(name)
+        tf = tempfile.NamedTemporaryFile(prefix='pydins_', suffix=('_%s' % (name,)))
+        tf.write(archive_data)
+        tf.flush()
+        self.__tempfiles[name] = tf
+        self.__nested_archives[name] = self.open_archive(tf.name)
+        return self.__nested_archives[name]
+
+    def get_data(self, item_name):
+        if not '//' in item_name:
+            return pyi_archive_viewer.get_data(item_name, self)
+        (nested_archive_name, inner_item) = item_name.split('//', 1)
+        return self.get_nested_archive(nested_archive_name).get_data(inner_item)
+
+    def recursive_toc(self, inherited_prefix=None):
+        for item in self.toc_tuples():
+            if inherited_prefix:
+                yield item._replace(name='%s//%s' % (inherited_prefix, item.name))
+            else:
+                yield item
+            if item.item_type == 'PYZ':
+                for inner_item in self.get_nested_archive(item.name).recursive_toc(item.name):
+                    yield inner_item
+
+
+class CArchiveReader(pyi_readers.CArchiveReader, ArchiveReader):
+    def toc_tuples(self):
+        for (pos, length, uncompressed_len, iscompressed, type_char, name) in self.toc.data:
+            yield TocTuple(
+                name=name,
+                pos=pos,
+                length=length,
+                uncompressed_len=uncompressed_len,
+                iscompressed=bool(iscompressed),
+                item_type=ITEM_TYPES[type_char])
+
+class ZlibArchiveReader(pyi_archive_viewer.ZlibArchive, ArchiveReader):
+    def toc_tuples(self):
+        for (item_name, (item_ispkg, item_pos, item_len)) in self.toc.iteritems():
+            yield TocTuple(
+                name=item_name,
+                pos=item_pos,
+                length=item_len,
+                uncompressed_len=item_len,
+                iscompressed=False,
+                item_type=None)
 
 def version2magic(version_str):
     while version_str and '.' in version_str:
@@ -80,12 +159,18 @@ def write_to_output(data, output_str):
     output.flush()
 
 def _do_list(args):
-    reader = CArchiveReader(args.archive.name)
-    archive_viewer.show('', reader)
+    reader = ArchiveReader.open_archive(args.archive.name)
+    if args.long:
+        pprint(list(reader.recursive_toc()))
+        return 0
+    for item in reader.recursive_toc():
+        sys.stdout.write(item.name)
+        sys.stdout.write(args.sep)
+    return 0
 
 def _do_extract(args):
-    reader = CArchiveReader(args.archive.name)
-    data = archive_viewer.get_data(args.item, reader)
+    reader = ArchiveReader.open_archive(args.archive.name)
+    data = reader.get_data(args.item)
     if data is None:
         print >>sys.stderr, "Requested item not found in archive"
         return 1
@@ -96,11 +181,13 @@ def main():
     ap = argparse.ArgumentParser(description='Extract content from a PyInstaller archive')
     subparsers = ap.add_subparsers()
     list = subparsers.add_parser('list', help='list archive contents to stdout')
-    list.set_defaults(action=_do_list)
+    list.set_defaults(action=_do_list, sep='\n')
+    list.add_argument('-l', dest='long', action='store_true', help='Human-readable listing; more details, not in a format intended for scripted consumption')
+    list.add_argument('-z', '--null', action='store_const', const='\0', dest='sep', help='Use NULs rather than newlines to separate entries')
     list.add_argument('archive', type=argparse.FileType('r'), help='PyInstaller-generated archive to read')
 
     extract = subparsers.add_parser('extract', help='extract a specific file')
-    extract.set_defaults(action=_do_list)
+    extract.set_defaults(action=_do_extract)
     extract.add_argument('--py-version', '-P', dest='pyver', default='2.7.14.final.0', help='If no pyc header is found, which magic do we assume?')
     extract.add_argument('--format', '-F', choices=[FMT_PYTHON_SOURCE, FMT_PYTHON_MODULE, FMT_UNCHANGED], default=FMT_UNCHANGED, help='Desired output format')
     extract.add_argument('archive', type=argparse.FileType('r'), help='PyInstaller-generated archive to read')
