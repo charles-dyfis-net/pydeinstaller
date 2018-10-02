@@ -7,12 +7,12 @@ Unlike several (all?) other options, this one supports binaries for non-Windows 
 
 setup(
 	name='pydeinstaller',
-	version='0.0.2',
+	version='0.0.3',
 	author='Charles Duffy',
 	author_email='charles@dyfis.net',
 	url='https://github.com/charles-dyfis-net/pydeinstaller',
 	package_dir={'': 'src'},
-	packages=find_packages('src'),
+	packages=['pydeinstaller'],
 	license='GPLv3',
 	long_description=long_description,
 	entry_points={
