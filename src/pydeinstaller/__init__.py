@@ -12,8 +12,14 @@ import argparse
 import collections
 import sys
 import tempfile
-from cStringIO import StringIO
+
 from pprint import pprint
+from future.utils import iteritems
+
+try:
+    from cStringIO import StringIO
+except ImportError:
+    from io import StringIO
 
 from PyInstaller.utils.cliutils.archive_viewer import ZlibArchive
 import PyInstaller.archive.readers as pyi_readers
@@ -28,7 +34,7 @@ TocTuple = collections.namedtuple('TocTuple', ['name', 'pos', 'length', 'uncompr
 
 def reverse_dict(d):
     result = { }
-    for k, v in d.iteritems():
+    for k, v in iteritems(d):
         result[v] = k
     return result
 

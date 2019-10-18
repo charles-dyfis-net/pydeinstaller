@@ -1,15 +1,7 @@
-# specific dependency releases we've been tested against
 altgraph==0.16.1
-appdirs==1.4.3
 Click==7.0
-dis3==0.1.2
-future==0.16.0
-macholib==1.11
-packaging==16.8
-pefile==2018.8.8
-PyInstaller==3.4
-pyparsing==2.2.0
-six==1.10.0
-spark-parser==1.8.7
-uncompyle6==3.2.3
-xdis==3.8.7
+future==0.18.1
+PyInstaller==3.5
+spark-parser==1.8.9
+uncompyle6==3.5.0
+xdis==4.1.0
