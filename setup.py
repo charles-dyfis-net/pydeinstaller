@@ -7,7 +7,7 @@ Unlike several (all?) other options, this one supports binaries for non-Windows 
 
 setup(
 	name='pydeinstaller',
-	version='0.0.3',
+	version='0.0.4',
 	author='Charles Duffy',
 	author_email='charles@dyfis.net',
 	url='https://github.com/charles-dyfis-net/pydeinstaller',
@@ -22,6 +22,7 @@ setup(
 	},
 	install_requires=[
 		'pyinstaller',
+		'setuptools',
 		'uncompyle6',
 		'xdis',
 	],
