@@ -21,6 +21,7 @@ setup(
 		],
 	},
 	install_requires=[
+		'future',
 		'pyinstaller',
 		'setuptools',
 		'uncompyle6',
