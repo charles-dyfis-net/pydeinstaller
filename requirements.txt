@@ -1,4 +1,4 @@
 future
-pyinstaller
+pyinstaller==3.4
 uncompyle6
 xdis
