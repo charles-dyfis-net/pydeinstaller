@@ -16,6 +16,8 @@ import tempfile
 from pprint import pprint
 from future.utils import iteritems
 
+from io import BytesIO
+
 try:
     from cStringIO import StringIO
 except ImportError:
@@ -96,7 +98,7 @@ class CArchiveReader(pyi_readers.CArchiveReader, ArchiveReader):
 
 class ZlibArchiveReader(pyi_archive_viewer.ZlibArchive, ArchiveReader):
     def toc_tuples(self):
-        for (item_name, (item_ispkg, item_pos, item_len)) in self.toc.iteritems():
+        for (item_name, (item_ispkg, item_pos, item_len)) in iteritems(self.toc):
             yield TocTuple(
                 name=item_name,
                 pos=item_pos,
@@ -107,7 +109,7 @@ class ZlibArchiveReader(pyi_archive_viewer.ZlibArchive, ArchiveReader):
 
 def version2magic(version_str):
     while version_str and '.' in version_str:
-        for magic_int, version_str_candidate in xdis.magics.magicint2version.iteritems():
+        for magic_int, version_str_candidate in iteritems(xdis.magics.magicint2version):
             if version_str_candidate == version_str:
                 return magic_int
         version_str = version_str.rsplit('.', 1)[0]
@@ -132,13 +134,13 @@ def coerce_to_format(data_in, desired_format, orig_filename=None, pyver=None):
         return data_in
     ### We may already be a Python module
     try:
-        data_in_f = StringIO(data_in)
+        data_in_f = BytesIO(data_in)
         version, timestamp, magic_int, code_obj, is_pypy, source_size = xdis.load.load_module_from_file_object(data_in_f, filename = orig_filename)
         data_pyc = data_in
     except ImportError:
         # Parsing as a .pyc file failed
         # However, that doesn't mean we aren't bytecode; we could be a marshalled code object without a header -- which is how pyinstaller stores scripts.
-        data_in_f = StringIO(data_in) # if we were closed by xdis.load earlier, recreate
+        data_in_f = BytesIO(data_in) # if we were closed by xdis.load earlier, recreate
         code_obj = xdis.unmarshal.load_code(data_in_f, magic_int)
     if desired_format == FMT_PYTHON_MODULE:
         if data_pyc is None:
