@@ -34,6 +34,13 @@ from uncompyle6.main import decompile
 
 TocTuple = collections.namedtuple('TocTuple', ['name', 'pos', 'length', 'uncompressed_len', 'iscompressed', 'item_type'])
 
+str_type = type('')
+byte_type = type(''.encode('utf-8'))
+def as_string(s):
+    if isinstance(s, byte_type):
+        return s.decode('utf-8')
+    return s
+
 def reverse_dict(d):
     result = { }
     for k, v in iteritems(d):
@@ -77,7 +84,7 @@ class ArchiveReader(object):
     def recursive_toc(self, inherited_prefix=None):
         for item in self.toc_tuples():
             if inherited_prefix:
-                yield item._replace(name='%s//%s' % (inherited_prefix, item.name))
+                yield item._replace(name='%s//%s' % (inherited_prefix, as_string(item.name)))
             else:
                 yield item
             if item.item_type == 'PYZ':
@@ -172,7 +179,7 @@ def _do_list(args):
         pprint(list(reader.recursive_toc()))
         return 0
     for item in reader.recursive_toc():
-        sys.stdout.write(item.name)
+        sys.stdout.write(as_string(item.name))
         sys.stdout.write(args.sep)
     return 0
 
