@@ -41,6 +41,11 @@ def as_string(s):
         return s.decode('utf-8')
     return s
 
+def as_bytes(s):
+    if isinstance(s, str_type):
+        return s.encode('utf-8')
+    return s
+
 def reverse_dict(d):
     result = { }
     for k, v in iteritems(d):
@@ -163,14 +168,19 @@ def coerce_to_format(data_in, desired_format, orig_filename=None, pyver=None):
 
 def write_to_output(data, output_str):
     '''Given a chunk of data, and a string representing an output file, write the data to the sink.'''
-    is_binary = '\x00' in data
+    data_bytes = as_bytes(data)
+    is_binary = as_bytes('\x00') in data_bytes
     if output_str is None:
         if is_binary and sys.stdout.isatty():
             raise Exception("Refusing to write binary data to a TTY")
         output = sys.stdout
     else:
         output = open(output_str, 'w')
-    output.write(data)
+    if hasattr(output, 'buffer'):
+        output.buffer.write(data_bytes)
+        output.buffer.flush()
+    else:
+        output.write(data)
     output.flush()
 
 def _do_list(args):
